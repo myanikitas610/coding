@@ -72,7 +72,7 @@
       text-align: left;
     }
 
-    .completed {
+    .task-text.completed {
       text-decoration: line-through;
       color: #888;
     }
@@ -86,6 +86,21 @@
       pointer-events: none;
       z-index: 10;
     }
+
+    #background-input {
+      margin-top: 20px;
+    }
+
+    .custom-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      object-fit: cover;
+      opacity: 0.6;
+    }
   </style>
 </head>
 <body>
@@ -98,13 +113,19 @@
     </form>
     
     <ul id="task-list"></ul>
+
+    <input type="file" id="background-input" accept="image/*">
   </div>
+
+  <img id="background-image" class="custom-background" alt="Custom Background" />
 
   <canvas id="confetti-canvas"></canvas>
 
   <script>
     const taskList = document.getElementById('task-list');
     const taskForm = document.getElementById('task-form');
+    const backgroundInput = document.getElementById('background-input');
+    const backgroundImage = document.getElementById('background-image');
     const confettiCanvas = document.getElementById('confetti-canvas');
     const ctx = confettiCanvas.getContext('2d');
     let confettiParticles = [];
@@ -113,6 +134,11 @@
     window.onload = () => {
       const storedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
       storedTasks.forEach(task => addTaskToDOM(task.text, task.dueDate, task.completed));
+
+      const storedBackground = localStorage.getItem('background');
+      if (storedBackground) {
+        backgroundImage.src = storedBackground;
+      }
     };
 
     // Add a new task
@@ -134,21 +160,32 @@
     // Add task to the DOM
     function addTaskToDOM(taskText, dueDate, completed) {
       const li = document.createElement('li');
-      li.className = completed ? 'completed' : '';
 
       const taskInfo = document.createElement('div');
       taskInfo.classList.add('task-info');
-      taskInfo.innerHTML = `<strong>${taskText}</strong><small>Due: ${dueDate}</small>`;
+
+      const taskTextElement = document.createElement('strong');
+      taskTextElement.textContent = taskText;
+      taskTextElement.classList.add('task-text');
+      if (completed) {
+        taskTextElement.classList.add('completed');
+      }
+
+      const dueDateElement = document.createElement('small');
+      dueDateElement.textContent = `Due: ${dueDate}`;
+
+      taskInfo.appendChild(taskTextElement);
+      taskInfo.appendChild(dueDateElement);
       
       const completeBtn = document.createElement('button');
       completeBtn.textContent = completed ? 'Completed' : 'Complete';
       completeBtn.disabled = completed;
-      completeBtn.addEventListener('click', () => completeTask(taskInfo, completeBtn));
+      completeBtn.addEventListener('click', () => completeTask(taskTextElement, completeBtn));
 
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = 'Delete';
       deleteBtn.style.backgroundColor = '#dc3545';
-      deleteBtn.addEventListener('click', () => deleteTask(taskInfo, li));
+      deleteBtn.addEventListener('click', () => deleteTask(taskTextElement, li));
 
       li.appendChild(taskInfo);
       li.appendChild(completeBtn);
@@ -157,18 +194,18 @@
     }
 
     // Complete task and trigger confetti
-    function completeTask(taskInfo, completeBtn) {
-      taskInfo.parentElement.classList.add('completed');
+    function completeTask(taskTextElement, completeBtn) {
+      taskTextElement.classList.add('completed');
       completeBtn.textContent = 'Completed';
       completeBtn.disabled = true;
 
-      updateTaskInStorage(taskInfo.firstChild.textContent);
+      updateTaskInStorage(taskTextElement.textContent);
       triggerConfetti();
     }
 
     // Delete task from DOM and storage
-    function deleteTask(taskInfo, taskElement) {
-      const taskText = taskInfo.firstChild.textContent;
+    function deleteTask(taskTextElement, taskElement) {
+      const taskText = taskTextElement.textContent;
       taskElement.remove();
       removeTaskFromStorage(taskText);
     }
@@ -241,6 +278,18 @@
 
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+
+    // Handle custom background upload
+    backgroundInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const imgUrl = event.target.result;
+        backgroundImage.src = imgUrl;
+        localStorage.setItem('background', imgUrl); // Save background in localStorage
+      };
+      reader.readAsDataURL(file);
+    });
   </script>
 </body>
 </html>
